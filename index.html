@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Random Number Generator</title>
+  <!-- favicon (upload favicon.ico to same folder). Cache-busted by JS -->
+  <link rel="icon" id="dynamic-favicon" href="/favicon.ico?v=4" type="image/x-icon" />
+  <style>
+    /* Theme variables */
+    :root{ --bg:#071022; --bg-2:#021025; --card:#0b1220; --text:#e6f0f2; --muted:#9aa4b2; --accent:#00f3bf; --input-border: rgba(255,255,255,0.06);} 
+    /* Light theme variables */
+    html[data-theme='light']{ --bg:#f6f8fa; --bg-2:#e6eef6; --card:#ffffff; --text:#061223; --muted:#4b5563; --accent:#0ea5a4; --input-border: rgba(0,0,0,0.08);} 
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      /* Default (dark) gradient: uses theme vars so it changes with data-theme */
+      background: linear-gradient(180deg, var(--bg), var(--bg-2));
+      color:var(--text);
+      font-family:Inter,system-ui,Segoe UI,Roboto,Arial;
+      display:flex;align-items:center;justify-content:center;padding:28px;
+      transition:background .25s ease, color .2s ease;
+    }
+
+    /* If light theme is active, use a distinct light gradient to avoid blending with dark look */
+    html[data-theme='light'] body{
+      background: linear-gradient(180deg, var(--bg), var(--bg-2));
+    }
+
+    .wrap{
+      width:100%;max-width:780px;border-radius:12px;padding:22px;border:1px solid rgba(0,0,0,0.06);
+      box-shadow:0 10px 40px rgba(2,6,23,0.12);background:var(--card);transition:box-shadow .2s ease, background .2s ease, border-color .2s ease;
+    }
+    /* Light theme adjustments for the card shadow/border so it doesn't look like a dark overlay */
+    html[data-theme='light'] .wrap{ box-shadow:0 8px 28px rgba(2,6,23,0.04); border:1px solid rgba(0,0,0,0.06); }
+
+    .top-text{font-size:0.9rem;color:var(--muted);text-align:center;margin-bottom:6px}
+    h1{font-size:1.7rem;margin:4px 0 16px;text-align:center;color:var(--accent)}
+
+    .row{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;margin-bottom:14px}
+    label{display:flex;flex-direction:column;font-size:0.9rem;color:var(--muted);min-width:120px}
+    input[type=number], input[type=text], select{
+      margin-top:8px;padding:10px 12px;border-radius:8px;border:1px solid var(--input-border);background:transparent;color:inherit;font-size:1rem;outline:none;width:180px;transition:border-color .15s ease, background .15s ease
+    }
+
+    .actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+    button{padding:10px 16px;border-radius:10px;border:0;background:linear-gradient(90deg,var(--accent),#7cf0d3);color:#021117;font-weight:700;cursor:pointer;font-size:0.95rem;box-shadow:0 6px 14px rgba(0,243,191,0.07);transition:transform .12s ease, box-shadow .12s ease, opacity .12s}
+    button:hover{transform:translateY(-3px);box-shadow:0 10px 22px rgba(0,0,0,0.12)}
+    button:active{transform:translateY(1px)}
+
+    .result{min-height:72px;text-align:center;padding:16px;border-radius:10px;background:transparent;border:1px solid rgba(0,0,0,0.04);font-size:2.1rem;font-weight:800;color:var(--text);display:flex;align-items:center;justify-content:center;position:relative}
+    .result.lucky{color:#ffd166;text-shadow:0 4px 18px rgba(255,209,102,0.12)}
+    .note{font-size:0.86rem;color:var(--muted);text-align:center;margin-top:12px}
+
+    .settings{margin-top:18px;padding:12px;border-radius:10px;background:transparent;border:1px solid rgba(0,0,0,0.04)}
+    .settings-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;color:var(--muted)}
+
+    .confetti{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center}
+    .burst{position:absolute;font-size:18px;opacity:0;transform:translateY(0) scale(.6);animation:burst .9s ease forwards}
+    @keyframes burst{0%{opacity:1;transform:translateY(0) scale(.8)}100%{opacity:0;transform:translateY(-40px) scale(1.6)}}
+
+    @media (max-width:520px){input[type=number]{width:100%}.row{flex-direction:column}}
+  </style>
+</head>
+<body>
+  <main class="wrap" role="main">
+    <div class="top-text">have fun</div>
+    <h1>Random Number Generator</h1>
+
+    <div class="row">
+      <label>Min
+        <input id="min" type="number" value="1" aria-label="Minimum value" />
+      </label>
+      <label>Max
+        <input id="max" type="number" value="100" aria-label="Maximum value" />
+      </label>
+    </div>
+
+    <div class="actions">
+      <button id="gen">Generate</button>
+      <button id="randFloat">Float</button>
+      <button id="phone">Phone</button>
+      <button id="copy">Copy</button>
+      <button id="share">Share</button>
+    </div>
+
+    <div id="result" class="result" aria-live="polite">—
+      <div class="confetti" id="confetti" aria-hidden="true"></div>
+    </div>
+
+    <div class="settings">
+      <div class="settings-row">
+        <label class="switch"><input type="checkbox" id="ruleBreaker" /> Don't follow rules</label>
+        <label class="switch"><input type="checkbox" id="useLucky" /> Use Lucky Numbers</label>
+        <label style="display:flex;flex-direction:column;min-width:220px;color:var(--muted)">Lucky numbers (comma)
+          <input id="luckyList" type="text" value="7,13,42" placeholder="e.g. 7,13,42" />
+        </label>
+        <label class="switch"><input type="checkbox" id="useEaster" checked/> Easter Eggs</label>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <label class="switch"><input type="checkbox" id="themeToggle" /> Light theme</label>
+        <label style="display:flex;flex-direction:column;color:var(--muted)">Phone country
+          <select id="countryCode">
+            <option value="+000">+000 (Fake)</option>
+            <option value="+1">+1 (USA)</option>
+            <option value="+44">+44 (UK)</option>
+            <option value="+91">+91 (IN)</option>
+            <option value="random">Random</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="note">servers are super awesome they only last for 2 seconds!</div>
+  </main>
+
+  <script>
+    // favicon cache-bust helper
+    (function(){ try{ const ver=4; const link=document.getElementById('dynamic-favicon'); if(link) link.href='/favicon.ico?v='+ver; }catch(e){} })();
+
+    const el={min:document.getElementById('min'), max:document.getElementById('max'), gen:document.getElementById('gen'), randFloat:document.getElementById('randFloat'), phone:document.getElementById('phone'), copy:document.getElementById('copy'), share:document.getElementById('share'), result:document.getElementById('result'), confetti:document.getElementById('confetti'), ruleBreaker:document.getElementById('ruleBreaker'), useLucky:document.getElementById('useLucky'), luckyList:document.getElementById('luckyList'), useEaster:document.getElementById('useEaster'), themeToggle:document.getElementById('themeToggle'), countryCode:document.getElementById('countryCode') };
+
+    // theme persistence
+    (function(){ const saved=localStorage.getItem('rgn-theme'); if(saved==='light'){ document.documentElement.setAttribute('data-theme','light'); el.themeToggle.checked=true } else { document.documentElement.removeAttribute('data-theme'); el.themeToggle.checked=false } })();
+    el.themeToggle.addEventListener('change', ()=>{ if(el.themeToggle.checked){ document.documentElement.setAttribute('data-theme','light'); localStorage.setItem('rgn-theme','light') } else { document.documentElement.removeAttribute('data-theme'); localStorage.removeItem('rgn-theme') } });
+
+    function parseLucky(){ return (el.luckyList.value||'').split(',').map(s=>s.trim()).filter(Boolean).map(Number); }
+
+    function burstEmojis(list){ const container=el.confetti; container.innerHTML=''; for(let i=0;i<12;i++){ const span=document.createElement('span'); span.className='burst'; span.style.left=(10 + Math.random()*80)+'%'; span.style.top=(40+Math.random()*40)+'%'; span.textContent=list[Math.floor(Math.random()*list.length)]; container.appendChild(span); } setTimeout(()=>container.innerHTML='',900); }
+
+    function toSafeInt(n){ n=Number(n)||0; if(!Number.isFinite(n)) return 0; const MIN=Number.MIN_SAFE_INTEGER, MAX=Number.MAX_SAFE_INTEGER; if(n<MIN) return MIN; if(n>MAX) return MAX; return Math.trunc(n); }
+
+    function genInt(min,max){ if(el.ruleBreaker.checked){ const sign=Math.random()<0.1?-1:1; const mag=Math.floor(Math.random()*1e9); return sign*mag; } min=toSafeInt(min); max=toSafeInt(max); if(min>max){ const t=min; min=max; max=t; } const range=max-min+1; return Math.floor(Math.random()*range)+min; }
+
+    function genFloat(min,max){ if(el.ruleBreaker.checked){ return (Math.random()*Number.MAX_SAFE_INTEGER).toFixed(6); } min=Number(min)||0; max=Number(max)||1; if(min>max){ const t=min; min=max; max=t; } return (Math.random()*(max-min)+min).toFixed(6); }
+
+    function genPhone(cc){ if(cc==='random'){ const opts=['+000','+1','+44','+91','+61','+81']; cc=opts[Math.floor(Math.random()*opts.length)]; } const r=(n)=>Array.from({length:n}).map(()=>Math.floor(Math.random()*10)).join(''); return `${cc}-${r(3)}-${r(3)}-${r(4)}`; }
+
+    function renderResult(text, metadata={}){ el.result.classList.toggle('lucky', !!metadata.lucky); el.result.textContent = text; if(metadata.egg){ const msg=document.createElement('div'); msg.style.fontSize='0.9rem'; msg.style.marginTop='8px'; msg.style.color='var(--muted)'; msg.textContent = metadata.egg; el.result.appendChild(msg); } if(metadata.confetti){ burstEmojis(['??','?','??','??','??','??']); } }
+
+    function shareCurrent(val){ const url = new URL(window.location.href); url.searchParams.set('num', String(val)); return url.toString(); }
+
+    el.gen.addEventListener('click', ()=>{ const min=el.min.value, max=el.max.value; const wantsFloat = (min.includes('.')||max.includes('.')); let val = wantsFloat ? genFloat(min,max) : genInt(min,max); const numeric = Number(String(val).replace(/[^0-9\-\.]/g,'')); let lucky=false; const luckyArr=parseLucky(); if(el.useLucky.checked && luckyArr.length){ if(luckyArr.includes(Math.trunc(numeric))){ lucky=true; }} let eggMsg=''; let conf=false; if(el.useEaster.checked){ const eggs = {69:'nice',420:'blaze it',12345:'retro combo'}; const k = Math.trunc(numeric); if(eggs[k]){ eggMsg = eggs[k]; conf=true; }} renderResult(val, {lucky:lucky, egg: eggMsg, confetti:conf}); });
+
+    el.randFloat.addEventListener('click', ()=>{ el.min.value = el.min.value || 0; el.max.value = el.max.value || 1; const v = genFloat(el.min.value, el.max.value); renderResult(v, {}); });
+
+    el.phone.addEventListener('click', ()=>{ const cc=el.countryCode.value; const p=genPhone(cc); renderResult(p, {}); });
+
+    el.copy.addEventListener('click', async ()=>{ const text=el.result.textContent||''; try{ await navigator.clipboard.writeText(text); el.copy.textContent='Copied!'; setTimeout(()=>el.copy.textContent='Copy',900); }catch(e){ el.copy.textContent='Failed'; setTimeout(()=>el.copy.textContent='Copy',900);} });
+
+    el.share.addEventListener('click', async ()=>{ const text=el.result.textContent||''; if(!text || text==='—'){ el.share.textContent='Nothing to share'; setTimeout(()=>el.share.textContent='Share',900); return; } const link = shareCurrent(text); try{ await navigator.clipboard.writeText(link); el.share.textContent='Link copied'; setTimeout(()=>el.share.textContent='Share',1200); }catch(e){ window.open(link,'_blank'); } });
+
+    [el.min, el.max].forEach(i=>i.addEventListener('keydown', e=>{ if(e.key==='Enter') el.gen.click(); }));
+
+    (function(){ const params = new URLSearchParams(window.location.search); const q = params.get('num'); if(q){ renderResult(q,{}); } else { el.result.textContent='ready'; setTimeout(()=>el.result.textContent='—',700); } })();
+  </script>
+</body>
+</html>
